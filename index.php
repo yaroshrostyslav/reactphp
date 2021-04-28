@@ -15,7 +15,10 @@ $loop->addPeriodicTimer(20, function () {
     echo "Set time: ".$Time->getTime()."\n";
 });
 
-$server = new React\Http\Server($loop, function (Psr\Http\Message\ServerRequestInterface $request) use($loop, $redis) {
+$server = new React\Http\Server(
+    $loop,
+    new React\Http\Middleware\StreamingRequestMiddleware(),
+    function (Psr\Http\Message\ServerRequestInterface $request) use($loop, $redis) {
     $path = $request->getUri()->getPath();
 
     switch ($path){
@@ -78,6 +81,25 @@ $server = new React\Http\Server($loop, function (Psr\Http\Message\ServerRequestI
                 ),
                 "Upload successful:  $filename \n"
             );
+        case '/uploadfile':
+            $body = $request->getBody();
+
+            /** @var \React\Stream\ReadableStreamInterface|null $body */
+            return new React\Promise\Promise(function ($resolve) use ($body) {
+                $bytes = 0;
+                $body->on('data', function ($chunk) use (&$bytes) {
+                    $bytes += strlen($chunk);
+                    echo "step 1 : $bytes \n";
+                });
+                $body->on('end', function () use (&$bytes, $resolve) {
+                    echo "step 2 : $bytes \n";
+                    $resolve(new React\Http\Message\Response(
+                        200,
+                        ['Content-Type' => 'text/plain'],
+                        "Bytes: $bytes\n"
+                    ));
+                });
+            });
     }
 });
 
