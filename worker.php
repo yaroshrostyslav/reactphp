@@ -11,7 +11,6 @@ $channel->queue_declare('message', false, false, false, false);
 echo "Waiting message... \n";
 
 $channel->basic_consume('message', '', false, true, false, false, function ($msg){
-    sleep(5);
     echo "New message: ".$msg->body." \n";
 });
 
